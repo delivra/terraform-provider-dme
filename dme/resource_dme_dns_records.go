@@ -154,10 +154,9 @@ func resourceManagedDNSRecordActionsCreate(d *schema.ResourceData, m interface{}
 
 	recordAttr := models.ManagedDNSRecordActions{}
 
-	recordAttr.Name = d.Get("name").(string)
-	// if name, ok := d.GetOk("name"); ok {
-	// 	recordAttr.Name = name.(string)
-	// }
+	if name, ok := d.GetOk("name"); ok {
+		recordAttr.Name = name.(string)
+	}
 
 	if value, ok := d.GetOk("value"); ok {
 		recordAttr.Value = value.(string)
@@ -442,7 +441,7 @@ func resourceMangagedDNSRecordActionsImport(d *schema.ResourceData, m interface{
 
 		log.Printf("Inside Record Import: Found Domain, looking up Record '%s', type '%s' (domain ID: '%s')\n", strParts[1], strParts[2], importDomain.Id())
 
-		findDNSRecord(d, m)
+		err = findDNSRecord(d, m)
 
 		log.Printf("Inside Record Import: Finished lookup, current DNS value: '%s'\n", d.Get("value"))
 	} else {
@@ -466,6 +465,7 @@ func findDNSRecord(d *schema.ResourceData, m interface{}) error {
 
 	data := con.S("data").Data().([]interface{})
 	var count int
+	var found bool = false
 	log.Println("data: ", data)
 
 	for _, info := range data {
@@ -474,10 +474,15 @@ func findDNSRecord(d *schema.ResourceData, m interface{}) error {
 		recordType := val["type"]
 
 		if recordName == lookupName && recordType == lookupType {
+			found = true
 			break
 		}
 
 		count = count + 1
+	}
+
+	if found == false {
+		return fmt.Errorf("Record not found")
 	}
 
 	cont1 := con.S("data").Index(count)
